@@ -6,24 +6,31 @@ import (
 
 	"msg-processor/internal/entity"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 )
 
 type Repository interface {
 	CreateMsg(ctx context.Context, msg entity.Msg) error
+	UnprocessedMsgs(ctx context.Context) ([]entity.Msg, error)
+	UpdateMsgsState(ctx context.Context, state entity.State, msgs ...entity.Msg) error
+}
+
+type Producer interface {
+	SendMsg(ctx context.Context, msgs ...entity.Msg) error
 }
 
 type Service struct {
-	repo Repository
+	repo     Repository
+	producer Producer
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, producer Producer) *Service {
+	return &Service{repo: repo, producer: producer}
 }
 
 func (s *Service) CreateMsg(ctx context.Context, text string) (entity.Msg, error) {
 	msg := entity.Msg{
-		ID:        uuid.New(),
+		ID:        uuid.Must(uuid.NewV4()),
 		Text:      text,
 		State:     entity.StateUnprocessed,
 		CreatedAt: time.Now(),
@@ -35,4 +42,23 @@ func (s *Service) CreateMsg(ctx context.Context, text string) (entity.Msg, error
 	}
 
 	return msg, nil
+}
+
+func (s *Service) SendMsgToKafka(ctx context.Context) error {
+	msgs, err := s.repo.UnprocessedMsgs(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = s.producer.SendMsg(ctx, msgs...)
+	if err != nil {
+		return err
+	}
+
+	err = s.repo.UpdateMsgsState(ctx, entity.StateProcessing, msgs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

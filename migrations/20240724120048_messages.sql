@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TYPE state AS ENUM ('UNPROCESSED', 'PROCESSED');
+CREATE TYPE state AS ENUM ('UNPROCESSED', 'PROCESSING', 'PROCESSED');
 
 CREATE TABLE messages (
     id UUID NOT NULL,

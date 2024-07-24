@@ -20,6 +20,15 @@ services:
       - msg-processor
     restart: always
 
+  kafka:
+    container_name: msg-kafks
+    image: apache/kafka:3.7.1
+    ports:
+      - "9092:9092"
+    networks:
+      - msg-processor
+    restart: always
+
   app:
     container_name: msg-app
     build: .

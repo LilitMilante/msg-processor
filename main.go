@@ -13,6 +13,7 @@ import (
 
 	"msg-processor/internal/api"
 	"msg-processor/internal/app"
+	"msg-processor/internal/broker"
 	"msg-processor/internal/repository"
 	"msg-processor/internal/service"
 
@@ -25,9 +26,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	pool, err := pgxpool.New(ctx, cfg.PostgresURL)
+	pgxCfg, err := pgxpool.ParseConfig(cfg.PostgresURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//pgxCfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+	//	pgxuuid.Register(conn.TypeMap())
+	//	return nil
+	//}
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,7 +49,8 @@ func main() {
 	defer pool.Close()
 
 	repo := repository.NewRepository(pool)
-	s := service.NewService(repo)
+	producer := broker.NewProducer(cfg.KafkaAddrs)
+	s := service.NewService(repo, producer)
 	h := api.NewHandler(s)
 
 	r := http.NewServeMux()
@@ -56,12 +68,33 @@ func main() {
 		}
 	}()
 
+	go func() {
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("send to Kafka:", ctx.Err())
+				return
+			case <-timer.C:
+				err = s.SendMsgToKafka(ctx)
+				if err != nil {
+					log.Println("send to Kafka:", err)
+				}
+
+				timer.Reset(time.Second)
+			}
+		}
+	}()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
 	<-c
+	cancel()
 
-	downCtx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
+	downCtx, downCancel := context.WithTimeout(context.Background(), time.Second)
+	defer downCancel()
 
 	err = srv.Shutdown(downCtx)
 	if err != nil {

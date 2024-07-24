@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	Port        int    `json:"port"`
-	PostgresURL string `json:"postgres_url"`
+	Port        int      `json:"port"`
+	PostgresURL string   `json:"postgres_url"`
+	KafkaAddrs  []string `json:"kafka_addrs"`
 }
 
 func NewConfig(cfgPath string) (Config, error) {

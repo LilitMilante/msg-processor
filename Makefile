@@ -6,11 +6,8 @@ up:
 down:
 	docker-compose down
 
-db:
-	docker-compose up -d db
-
-db-down:
-	docker rm -f msg_db
+infra:
+	docker-compose up -d db kafka
 
 migrate-new:
 	goose -dir ./migrations create $(name) sql

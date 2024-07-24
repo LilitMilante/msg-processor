@@ -3,7 +3,7 @@ package entity
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 )
 
 type (
@@ -19,5 +19,6 @@ type (
 
 const (
 	StateUnprocessed State = "UNPROCESSED"
+	StateProcessing  State = "PROCESSING"
 	StateProcessed   State = "PROCESSED"
 )
