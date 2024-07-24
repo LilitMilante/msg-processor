@@ -1,0 +1,3 @@
+{
+  "postgres_url": "postgres://postgres:dev@db:5432/postgres?sslmode=disable"
+}

@@ -1,0 +1,35 @@
+version: "3.9"
+
+networks:
+  msg-processor:
+
+volumes:
+  msg-processor-pg:
+
+services:
+  db:
+    container_name: msg-db
+    image: postgres:15.3-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+    ports:
+      - "8182:5432"
+    volumes:
+      - "msg-processor-pg:/var/lib/postgresql/data"
+    networks:
+      - msg-processor
+    restart: always
+
+  app:
+    container_name: msg-app
+    build: .
+    ports:
+      - "8181:8080"
+    volumes:
+      - "./docker.config.json:/app/config.json"
+    networks:
+      - msg-processor
+    depends_on:
+      - db
+    restart: always
+    pull_policy: always
