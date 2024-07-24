@@ -62,3 +62,7 @@ func (s *Service) SendMsgToKafka(ctx context.Context) error {
 
 	return nil
 }
+
+func (s *Service) ProcessMsg(ctx context.Context, msg entity.Msg) error {
+	return s.repo.UpdateMsgsState(ctx, entity.StateProcessed, msg)
+}

@@ -33,10 +33,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//pgxCfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-	//	pgxuuid.Register(conn.TypeMap())
-	//	return nil
-	//}
 
 	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
 	if err != nil {
@@ -50,6 +46,7 @@ func main() {
 
 	repo := repository.NewRepository(pool)
 	producer := broker.NewProducer(cfg.KafkaAddrs)
+	consumer := broker.NewConsumer(cfg.KafkaAddrs)
 	s := service.NewService(repo, producer)
 	h := api.NewHandler(s)
 
@@ -83,10 +80,12 @@ func main() {
 					log.Println("send to Kafka:", err)
 				}
 
-				timer.Reset(time.Second)
+				timer.Reset(time.Second * 5)
 			}
 		}
 	}()
+
+	go consumer.OnNewMsgEvent(ctx, s.ProcessMsg)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
